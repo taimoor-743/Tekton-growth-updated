@@ -1,15 +1,1 @@
-# Repository Cleaned
-
-This repository has been cleaned and is ready for fresh content.
-
-## Status: EMPTY
-
-All previous files have been removed. The repository is now completely clean.
-
-## Next Steps
-
-1. Upload your complete project files
-2. The repository is now empty and ready for your new content
-
----
-*Repository cleaned on request - ready for new upload*
+# Tekton Growth UpdatednnThis repository contains the updated Tekton Growth project with proper TypeScript types and database structure.nn## Featuresnn- Next.js 14 with App Routern- Supabase integration with projects and project_usage tablesn- Real-time updates and proper timestamp handlingn- TypeScript support with proper type definitionsnn## Setupnn1. Clone the repositoryn2. Install dependencies: `npm install`n3. Set up environment variablesn4. Run the development server: `npm run dev`n

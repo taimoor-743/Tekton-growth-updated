@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Force fresh build - clear cache
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { error: updateError } = await supabase
-        .from('requests')
+        .from('project_usage')
         .update({
           status: 'error',
           error_message: error,
@@ -38,9 +39,9 @@ export async function POST(request: NextRequest) {
         .eq('id', id)
 
       if (updateError) {
-        console.error('Error updating request:', updateError)
+        console.error('Error updating project usage:', updateError)
         return NextResponse.json(
-          { ok: false, message: 'Failed to update request' },
+          { ok: false, message: 'Failed to update project usage' },
           { status: 500 }
         )
       }
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { error: updateError } = await supabase
-      .from('requests')
+      .from('project_usage')
       .update({
         status: 'ready',
         output_link: outputLink,
@@ -66,9 +67,9 @@ export async function POST(request: NextRequest) {
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error updating request:', updateError)
+      console.error('Error updating project usage:', updateError)
       return NextResponse.json(
-        { ok: false, message: 'Failed to update request' },
+        { ok: false, message: 'Failed to update project usage' },
         { status: 500 }
       )
     }
