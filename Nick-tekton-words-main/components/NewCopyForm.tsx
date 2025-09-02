@@ -52,12 +52,16 @@ export default function NewCopyForm() {
       let requestId: string
       const trimmedProjectName = projectName.trim()
 
-      console.log('Checking for existing project:', trimmedProjectName)
+      console.log('=== STARTING PROJECT GENERATION ===')
+      console.log('Project name:', trimmedProjectName)
+      console.log('Business details length:', businessDetails.trim().length)
+      console.log('Website structure length:', websiteStructure.trim().length)
 
-      // First, check if a project with this name already exists
+      // Step 1: Check if a project with this name already exists
+      console.log('Step 1: Checking for existing project...')
       const { data: existingProjects, error: findError } = await supabase
         .from('requests')
-        .select('id, created_at, project_name')
+        .select('id, created_at, project_name, business_details')
         .eq('project_name', trimmedProjectName)
         .order('created_at', { ascending: false })
 
@@ -66,15 +70,17 @@ export default function NewCopyForm() {
         throw new Error('Failed to check existing project')
       }
 
-      console.log('Existing projects found:', existingProjects)
+      console.log('Step 1 Result: Found', existingProjects?.length || 0, 'existing projects')
 
-      // If project exists, use the most recent one (first in the list due to DESC order)
+      // Step 2: Decide whether to update existing or create new
       if (existingProjects && existingProjects.length > 0) {
-        const existingProject = existingProjects[0] // Get the most recent one
-        console.log('Using existing project:', existingProject)
+        // Use the most recent existing project
+        const existingProject = existingProjects[0]
+        console.log('Step 2: Using existing project:', existingProject)
         requestId = existingProject.id
 
-        // Update the existing record with new website structure and current timestamp
+        // Step 3: Update the existing record
+        console.log('Step 3: Updating existing project...')
         const { error: updateError } = await supabase
           .from('requests')
           .update({
@@ -89,13 +95,15 @@ export default function NewCopyForm() {
           throw new Error('Failed to update existing project')
         }
 
-        console.log('Successfully updated existing project')
+        console.log('Step 3 Result: Successfully updated existing project')
+        console.log('Original created_at preserved:', existingProject.created_at)
+        console.log('Updated_at set to:', new Date().toISOString())
       } else {
-        console.log('Creating new project')
-        // Generate new UUID for new project
+        // Create new project
+        console.log('Step 2: No existing project found, creating new one...')
         requestId = uuidv4()
 
-        // Insert new record into Supabase
+        console.log('Step 3: Creating new project...')
         const { error: insertError } = await supabase
           .from('requests')
           .insert({
@@ -111,12 +119,13 @@ export default function NewCopyForm() {
           throw new Error('Failed to create request')
         }
 
-        console.log('Successfully created new project')
+        console.log('Step 3 Result: Successfully created new project')
       }
 
       setCurrentRequestId(requestId)
 
-      // Call n8n webhook through our proxy
+      // Step 4: Send to n8n webhook
+      console.log('Step 4: Sending to n8n webhook...')
       const callbackUrl = 'https://tekton-updated-interface.netlify.app/api/callback'
       
       const response = await fetch('/api/webhook-proxy', {
@@ -139,6 +148,9 @@ export default function NewCopyForm() {
         throw new Error(`Failed to send request to n8n (${response.status})`)
       }
 
+      console.log('Step 4 Result: Successfully sent to n8n')
+      console.log('=== PROJECT GENERATION COMPLETED ===')
+
       // Show success toast and reset form
       setToastMessage('Project saved and request sent successfully! Check the History tab for results in 2-3 minutes.')
       setToastType('success')
@@ -153,6 +165,7 @@ export default function NewCopyForm() {
       setCurrentRequestId(null)
 
     } catch (err) {
+      console.error('=== PROJECT GENERATION FAILED ===')
       console.error('Generation error:', err)
       let errorMessage = 'An error occurred'
       
