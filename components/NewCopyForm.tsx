@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import Button from './Button'
 import Toast from './Toast'
+import ProjectDropdown from './ProjectDropdown'
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
-import ProjectDropdown from './ProjectDropdown'
 
 interface Project {
   id: string
@@ -15,6 +15,7 @@ interface Project {
 }
 
 export default function NewCopyForm() {
+  const [projectName, setProjectName] = useState('')
   const [businessDetails, setBusinessDetails] = useState('')
   const [websiteStructure, setWebsiteStructure] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -25,8 +26,7 @@ export default function NewCopyForm() {
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'info' | 'warning' | 'error'>('info')
-  const [selectedProjectName, setSelectedProjectName] = useState('')
-  const [projectName, setProjectName] = useState('')
+  const [selectedProjectName, setSelectedProjectName] = useState<string>('')
 
   const handleProjectSelect = (project: Project) => {
     setProjectName(project.project_name)
@@ -49,19 +49,21 @@ export default function NewCopyForm() {
     setOutputLink('')
 
     try {
-      // Check if project name already exists
-      const { data: existingProject } = await supabase
-        .from('requests')
-        .select('id')
-        .eq('project_name', projectName.trim())
-        .limit(1)
+      // Check if project name already exists (only if user didn't select from saved projects)
+      if (!selectedProjectName) {
+        const { data: existingProject } = await supabase
+          .from('requests')
+          .select('id')
+          .eq('project_name', projectName.trim())
+          .limit(1)
 
-      if (existingProject && existingProject.length > 0) {
-        setToastMessage('A project with this name already exists. Please choose a different name.')
-        setToastType('warning')
-        setShowToast(true)
-        setIsGenerating(false)
-        return
+        if (existingProject && existingProject.length > 0) {
+          setToastMessage('A project with this name already exists. Please choose a different name.')
+          setToastType('warning')
+          setShowToast(true)
+          setIsGenerating(false)
+          return
+        }
       }
 
       // Generate UUID
