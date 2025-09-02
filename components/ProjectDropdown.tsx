@@ -70,9 +70,7 @@ export default function ProjectDropdown({ onProjectSelect, selectedProjectName }
   }, [])
 
   const filteredProjects = projects.filter(project =>
-    project.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.business_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.website_structure.toLowerCase().includes(searchTerm.toLowerCase())
+    project.project_name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleProjectSelect = (project: Project) => {
