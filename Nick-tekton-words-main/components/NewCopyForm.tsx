@@ -52,13 +52,13 @@ export default function NewCopyForm() {
       let requestId: string
       const trimmedProjectName = projectName.trim()
 
-      console.log('=== STARTING PROJECT GENERATION ===')
-      console.log('Project name:', trimmedProjectName)
-      console.log('Business details length:', businessDetails.trim().length)
-      console.log('Website structure length:', websiteStructure.trim().length)
+      console.log('🔍 === STARTING PROJECT GENERATION ===')
+      console.log('📝 Project name:', trimmedProjectName)
+      console.log('📊 Business details length:', businessDetails.trim().length)
+      console.log('🏗️ Website structure length:', websiteStructure.trim().length)
 
-      // Step 1: Check if a project with this name already exists
-      console.log('Step 1: Checking for existing project...')
+      // Step 1: ALWAYS check for existing project first
+      console.log('🔍 Step 1: Checking for existing project...')
       const { data: existingProjects, error: findError } = await supabase
         .from('requests')
         .select('id, created_at, project_name, business_details')
@@ -66,90 +66,102 @@ export default function NewCopyForm() {
         .order('created_at', { ascending: false })
 
       if (findError) {
-        console.error('Error finding existing project:', findError)
+        console.error('❌ Error finding existing project:', findError)
         throw new Error('Failed to check existing project')
       }
 
-      console.log('Step 1 Result: Found', existingProjects?.length || 0, 'existing projects')
+      console.log('📋 Step 1 Result: Found', existingProjects?.length || 0, 'existing projects')
+      if (existingProjects && existingProjects.length > 0) {
+        console.log('📋 Existing projects:', existingProjects.map((p: any) => ({ id: p.id, created_at: p.created_at })))
+      }
 
-      // Step 2: Decide whether to update existing or create new
+      // Step 2: ALWAYS use existing project if found, NEVER create new one for same name
       if (existingProjects && existingProjects.length > 0) {
         // Use the most recent existing project
         const existingProject = existingProjects[0]
-        console.log('Step 2: Using existing project:', existingProject)
+        console.log('✅ Step 2: Using existing project:', existingProject)
         requestId = existingProject.id
 
         // Step 3: Update the existing record
-        console.log('Step 3: Updating existing project...')
+        console.log('🔄 Step 3: Updating existing project...')
+        const updateData = {
+          website_structure: websiteStructure.trim(),
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        }
+        console.log('📝 Update data:', updateData)
+
         const { error: updateError } = await supabase
           .from('requests')
-          .update({
-            website_structure: websiteStructure.trim(),
-            status: 'pending',
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', requestId)
 
         if (updateError) {
-          console.error('Error updating existing project:', updateError)
+          console.error('❌ Error updating existing project:', updateError)
           throw new Error('Failed to update existing project')
         }
 
-        console.log('Step 3 Result: Successfully updated existing project')
-        console.log('Original created_at preserved:', existingProject.created_at)
-        console.log('Updated_at set to:', new Date().toISOString())
+        console.log('✅ Step 3 Result: Successfully updated existing project')
+        console.log('📅 Original created_at preserved:', existingProject.created_at)
+        console.log('🕒 Updated_at set to:', new Date().toISOString())
       } else {
-        // Create new project
-        console.log('Step 2: No existing project found, creating new one...')
+        // Only create new project if NO existing project found
+        console.log('🆕 Step 2: No existing project found, creating new one...')
         requestId = uuidv4()
 
-        console.log('Step 3: Creating new project...')
+        console.log('🆕 Step 3: Creating new project...')
+        const insertData = {
+          id: requestId,
+          project_name: trimmedProjectName,
+          business_details: businessDetails.trim(),
+          website_structure: websiteStructure.trim(),
+          status: 'pending'
+        }
+        console.log('📝 Insert data:', insertData)
+
         const { error: insertError } = await supabase
           .from('requests')
-          .insert({
-            id: requestId,
-            project_name: trimmedProjectName,
-            business_details: businessDetails.trim(),
-            website_structure: websiteStructure.trim(),
-            status: 'pending'
-          })
+          .insert(insertData)
 
         if (insertError) {
-          console.error('Error creating new project:', insertError)
+          console.error('❌ Error creating new project:', insertError)
           throw new Error('Failed to create request')
         }
 
-        console.log('Step 3 Result: Successfully created new project')
+        console.log('✅ Step 3 Result: Successfully created new project')
       }
 
       setCurrentRequestId(requestId)
 
       // Step 4: Send to n8n webhook
-      console.log('Step 4: Sending to n8n webhook...')
+      console.log('📤 Step 4: Sending to n8n webhook...')
       const callbackUrl = 'https://tekton-updated-interface.netlify.app/api/callback'
+      
+      const webhookData = {
+        id: requestId,
+        projectName: trimmedProjectName,
+        businessDetails: businessDetails.trim(),
+        websiteStructure: websiteStructure.trim(),
+        callbackUrl
+      }
+      console.log('📤 Webhook data:', webhookData)
       
       const response = await fetch('/api/webhook-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          id: requestId,
-          projectName: trimmedProjectName,
-          businessDetails: businessDetails.trim(),
-          websiteStructure: websiteStructure.trim(),
-          callbackUrl
-        })
+        body: JSON.stringify(webhookData)
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('n8n response error:', response.status, errorText)
+        console.error('❌ n8n response error:', response.status, errorText)
         throw new Error(`Failed to send request to n8n (${response.status})`)
       }
 
-      console.log('Step 4 Result: Successfully sent to n8n')
-      console.log('=== PROJECT GENERATION COMPLETED ===')
+      console.log('✅ Step 4 Result: Successfully sent to n8n')
+      console.log('🎉 === PROJECT GENERATION COMPLETED ===')
 
       // Show success toast and reset form
       setToastMessage('Project saved and request sent successfully! Check the History tab for results in 2-3 minutes.')
@@ -165,8 +177,8 @@ export default function NewCopyForm() {
       setCurrentRequestId(null)
 
     } catch (err) {
-      console.error('=== PROJECT GENERATION FAILED ===')
-      console.error('Generation error:', err)
+      console.error('💥 === PROJECT GENERATION FAILED ===')
+      console.error('❌ Generation error:', err)
       let errorMessage = 'An error occurred'
       
       if (err instanceof Error) {
