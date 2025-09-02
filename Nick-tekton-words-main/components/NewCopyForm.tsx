@@ -51,19 +51,19 @@ export default function NewCopyForm() {
     try {
       let requestId: string
 
-      // If user selected a saved project, find and update the existing record
-      if (selectedProjectName) {
-        // Find the existing project record
-        const { data: existingProject, error: findError } = await supabase
-          .from('requests')
-          .select('id, created_at')
-          .eq('project_name', selectedProjectName)
-          .limit(1)
+      // First, check if a project with this name already exists
+      const { data: existingProject, error: findError } = await supabase
+        .from('requests')
+        .select('id, created_at')
+        .eq('project_name', projectName.trim())
+        .limit(1)
 
-        if (findError || !existingProject || existingProject.length === 0) {
-          throw new Error('Failed to find existing project')
-        }
+      if (findError) {
+        throw new Error('Failed to check existing project')
+      }
 
+      // If project exists, update it (preserve original created_at)
+      if (existingProject && existingProject.length > 0) {
         requestId = existingProject[0].id
 
         // Update the existing record with new website structure and current timestamp
@@ -80,21 +80,6 @@ export default function NewCopyForm() {
           throw new Error('Failed to update existing project')
         }
       } else {
-        // Check if project name already exists for new projects
-        const { data: existingProject } = await supabase
-          .from('requests')
-          .select('id')
-          .eq('project_name', projectName.trim())
-          .limit(1)
-
-        if (existingProject && existingProject.length > 0) {
-          setToastMessage('A project with this name already exists. Please choose a different name.')
-          setToastType('warning')
-          setShowToast(true)
-          setIsGenerating(false)
-          return
-        }
-
         // Generate new UUID for new project
         requestId = uuidv4()
 
