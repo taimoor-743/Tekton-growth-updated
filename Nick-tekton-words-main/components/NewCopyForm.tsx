@@ -51,19 +51,25 @@ export default function NewCopyForm() {
     try {
       let requestId: string
 
+      console.log('Checking for existing project:', projectName.trim())
+
       // First, check if a project with this name already exists
       const { data: existingProject, error: findError } = await supabase
         .from('requests')
-        .select('id, created_at')
+        .select('id, created_at, project_name')
         .eq('project_name', projectName.trim())
         .limit(1)
 
       if (findError) {
+        console.error('Error finding existing project:', findError)
         throw new Error('Failed to check existing project')
       }
 
+      console.log('Existing project found:', existingProject)
+
       // If project exists, update it (preserve original created_at)
       if (existingProject && existingProject.length > 0) {
+        console.log('Updating existing project:', existingProject[0])
         requestId = existingProject[0].id
 
         // Update the existing record with new website structure and current timestamp
@@ -77,9 +83,13 @@ export default function NewCopyForm() {
           .eq('id', requestId)
 
         if (updateError) {
+          console.error('Error updating existing project:', updateError)
           throw new Error('Failed to update existing project')
         }
+
+        console.log('Successfully updated existing project')
       } else {
+        console.log('Creating new project')
         // Generate new UUID for new project
         requestId = uuidv4()
 
@@ -95,8 +105,11 @@ export default function NewCopyForm() {
           })
 
         if (insertError) {
+          console.error('Error creating new project:', insertError)
           throw new Error('Failed to create request')
         }
+
+        console.log('Successfully created new project')
       }
 
       setCurrentRequestId(requestId)
