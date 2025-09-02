@@ -7,12 +7,14 @@ import { formatRelativeTime, formatExactTime } from '@/lib/time'
 
 interface Request {
   id: string
+  project_name: string
   business_details: string
   website_structure: string
   output_link?: string
-  status: 'pending' | 'ready' | 'error'
+  status: 'pending' | 'ready' | 'error' | 'saved'
   error_message?: string
   created_at: string
+  updated_at: string
 }
 
 export default function HistoryList() {
@@ -108,6 +110,12 @@ export default function HistoryList() {
               <tr key={request.id} className="hover:bg-zinc-50 cursor-pointer">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
                   {formatDate(request.created_at)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                  {formatDate(request.updated_at)}
+                </td>
+                <td className="px-6 py-4 text-sm text-zinc-900">
+                  {request.project_name}
                 </td>
                 <td className="px-6 py-4 text-sm text-zinc-900">
                   {request.business_details.length > 120 
