@@ -4,8 +4,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Forward the request to n8n
-    const webhookUrl = 'https://n8n.srv833939.hstgr.cloud/webhook/5370bc4e-6508-4bed-b370-57fd35575f78'
+    // Forward the request to n8n test webhook
+    const webhookUrl = 'https://n8n.srv833939.hstgr.cloud/webhook-test/5370bc4e-6508-4bed-b370-57fd35575f78'
     
     const response = await fetch(webhookUrl, {
       method: 'POST',
