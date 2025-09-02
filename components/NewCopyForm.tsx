@@ -5,6 +5,14 @@ import Button from './Button'
 import Toast from './Toast'
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
+import ProjectDropdown from './ProjectDropdown'
+
+interface Project {
+  id: string
+  project_name: string
+  business_details: string
+  website_structure: string
+}
 
 export default function NewCopyForm() {
   const [businessDetails, setBusinessDetails] = useState('')
@@ -17,9 +25,23 @@ export default function NewCopyForm() {
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'info' | 'warning' | 'error'>('info')
+  const [selectedProjectName, setSelectedProjectName] = useState('')
+  const [projectName, setProjectName] = useState('')
+
+  const handleProjectSelect = (project: Project) => {
+    setProjectName(project.project_name)
+    setBusinessDetails(project.business_details)
+    // Don't fill website structure - let user enter it manually
+    setSelectedProjectName(project.project_name)
+  }
 
   const handleGenerate = async () => {
-    if (!businessDetails.trim() || !websiteStructure.trim()) return
+    if (!projectName.trim() || !businessDetails.trim() || !websiteStructure.trim()) {
+      setToastMessage('Please fill in all fields: Project Name, Business Details, and Website Structure.')
+      setToastType('warning')
+      setShowToast(true)
+      return
+    }
 
     setIsGenerating(true)
     setError('')
@@ -27,15 +49,31 @@ export default function NewCopyForm() {
     setOutputLink('')
 
     try {
+      // Check if project name already exists
+      const { data: existingProject } = await supabase
+        .from('requests')
+        .select('id')
+        .eq('project_name', projectName.trim())
+        .limit(1)
+
+      if (existingProject && existingProject.length > 0) {
+        setToastMessage('A project with this name already exists. Please choose a different name.')
+        setToastType('warning')
+        setShowToast(true)
+        setIsGenerating(false)
+        return
+      }
+
       // Generate UUID
       const requestId = uuidv4()
       setCurrentRequestId(requestId)
 
-      // Insert into Supabase
+      // Insert into Supabase (automatically saves the project)
       const { error: insertError } = await supabase
         .from('requests')
         .insert({
           id: requestId,
+          project_name: projectName.trim(),
           business_details: businessDetails.trim(),
           website_structure: websiteStructure.trim(),
           status: 'pending'
@@ -46,7 +84,7 @@ export default function NewCopyForm() {
       }
 
       // Call n8n webhook through our proxy
-      const callbackUrl = 'https://words.tektongrowth.com/api/callback'
+      const callbackUrl = 'https://tekton-updated-interface.netlify.app/api/callback'
       
       const response = await fetch('/api/webhook-proxy', {
         method: 'POST',
@@ -55,6 +93,7 @@ export default function NewCopyForm() {
         },
         body: JSON.stringify({
           id: requestId,
+          projectName: projectName.trim(),
           businessDetails: businessDetails.trim(),
           websiteStructure: websiteStructure.trim(),
           callbackUrl
@@ -68,13 +107,15 @@ export default function NewCopyForm() {
       }
 
       // Show success toast and reset form
-      setToastMessage('Request sent successfully! Check the History tab for results in 2-3 minutes.')
+      setToastMessage('Project saved and request sent successfully! Check the History tab for results in 2-3 minutes.')
       setToastType('success')
       setShowToast(true)
       
       // Reset form
+      setProjectName('')
       setBusinessDetails('')
       setWebsiteStructure('')
+      setSelectedProjectName('')
       setIsGenerating(false)
       setCurrentRequestId(null)
 
@@ -100,11 +141,11 @@ export default function NewCopyForm() {
     }
   }
 
-
-
   const handleReset = () => {
+    setProjectName('')
     setBusinessDetails('')
     setWebsiteStructure('')
+    setSelectedProjectName('')
     setIsGenerating(false)
     setHasResult(false)
     setOutputLink('')
@@ -116,9 +157,7 @@ export default function NewCopyForm() {
     setShowToast(false)
   }
 
-
-
-  const isFormValid = businessDetails.trim() && websiteStructure.trim()
+  const isFormValid = projectName.trim() && businessDetails.trim() && websiteStructure.trim()
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -133,9 +172,36 @@ export default function NewCopyForm() {
       
       {/* Form */}
       <div className="space-y-6">
+        {/* Load Saved Project Dropdown */}
         <div>
-          <label htmlFor="business-details" className="block text-sm font-medium text-zinc-700 mb-2">
-            Business Details
+          <label className="block text-base font-bold text-zinc-900 mb-2">
+            Load Saved Project
+          </label>
+          <ProjectDropdown 
+            onProjectSelect={handleProjectSelect}
+            selectedProjectName={selectedProjectName}
+          />
+        </div>
+
+        {/* Project Name */}
+        <div>
+          <label htmlFor="project-name" className="block text-base font-bold text-zinc-900 mb-2">
+            Project Name *
+          </label>
+          <input
+            id="project-name"
+            type="text"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            placeholder="Enter a name for your project..."
+            className="w-full px-4 py-3 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* Business Details */}
+        <div>
+          <label htmlFor="business-details" className="block text-base font-bold text-zinc-900 mb-2">
+            Business Details *
           </label>
           <textarea
             id="business-details"
@@ -146,9 +212,10 @@ export default function NewCopyForm() {
           />
         </div>
 
+        {/* Website Structure */}
         <div>
-          <label htmlFor="website-structure" className="block text-sm font-medium text-zinc-700 mb-2">
-            Website Structure / Pages
+          <label htmlFor="website-structure" className="block text-base font-bold text-zinc-900 mb-2">
+            Website Structure / Pages *
           </label>
           <textarea
             id="website-structure"
@@ -175,10 +242,11 @@ export default function NewCopyForm() {
       <div className="border border-blue-200 rounded-xl p-6 bg-blue-50">
         <h3 className="text-lg font-semibold text-blue-900 mb-4">How it works</h3>
         <div className="space-y-3 text-blue-800">
-          <p className="text-sm">1. Fill out the form above with your business details and website structure</p>
-          <p className="text-sm">2. Click &quot;Generate Copy&quot; to send your request</p>
-          <p className="text-sm">3. Check the <strong>History tab</strong> to see your results (usually ready in 2-3 minutes)</p>
-          <p className="text-sm">4. All your requests are saved and can be viewed anytime in the History section</p>
+          <p className="text-sm">1. Load a saved project or fill out the form with your business details and website structure</p>
+          <p className="text-sm">2. Enter a unique project name for your request</p>
+          <p className="text-sm">3. Click &quot;Generate Copy&quot; to save your project and send your request</p>
+          <p className="text-sm">4. Check the <strong>History tab</strong> to see your results (usually ready in 2-3 minutes)</p>
+          <p className="text-sm">5. All your projects are automatically saved and can be viewed anytime in the History section</p>
         </div>
       </div>
 
@@ -195,4 +263,3 @@ export default function NewCopyForm() {
     </div>
   )
 }
-
