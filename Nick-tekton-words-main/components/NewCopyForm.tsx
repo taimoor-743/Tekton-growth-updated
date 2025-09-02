@@ -50,27 +50,29 @@ export default function NewCopyForm() {
 
     try {
       let requestId: string
+      const trimmedProjectName = projectName.trim()
 
-      console.log('Checking for existing project:', projectName.trim())
+      console.log('Checking for existing project:', trimmedProjectName)
 
       // First, check if a project with this name already exists
-      const { data: existingProject, error: findError } = await supabase
+      const { data: existingProjects, error: findError } = await supabase
         .from('requests')
         .select('id, created_at, project_name')
-        .eq('project_name', projectName.trim())
-        .limit(1)
+        .eq('project_name', trimmedProjectName)
+        .order('created_at', { ascending: false })
 
       if (findError) {
         console.error('Error finding existing project:', findError)
         throw new Error('Failed to check existing project')
       }
 
-      console.log('Existing project found:', existingProject)
+      console.log('Existing projects found:', existingProjects)
 
-      // If project exists, update it (preserve original created_at)
-      if (existingProject && existingProject.length > 0) {
-        console.log('Updating existing project:', existingProject[0])
-        requestId = existingProject[0].id
+      // If project exists, use the most recent one (first in the list due to DESC order)
+      if (existingProjects && existingProjects.length > 0) {
+        const existingProject = existingProjects[0] // Get the most recent one
+        console.log('Using existing project:', existingProject)
+        requestId = existingProject.id
 
         // Update the existing record with new website structure and current timestamp
         const { error: updateError } = await supabase
@@ -98,7 +100,7 @@ export default function NewCopyForm() {
           .from('requests')
           .insert({
             id: requestId,
-            project_name: projectName.trim(),
+            project_name: trimmedProjectName,
             business_details: businessDetails.trim(),
             website_structure: websiteStructure.trim(),
             status: 'pending'
@@ -124,7 +126,7 @@ export default function NewCopyForm() {
         },
         body: JSON.stringify({
           id: requestId,
-          projectName: projectName.trim(),
+          projectName: trimmedProjectName,
           businessDetails: businessDetails.trim(),
           websiteStructure: websiteStructure.trim(),
           callbackUrl
